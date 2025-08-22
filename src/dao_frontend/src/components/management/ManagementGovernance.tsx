@@ -12,29 +12,37 @@ import {
   Calendar,
   Target,
   Activity,
+  Loader2,
+  AlertCircle
 } from 'lucide-react';
 import { DAO } from '../../types/dao';
 import { useProposals } from '../../hooks/useProposals';
 import { useGovernance } from '../../hooks/useGovernance';
+import Toast from '../Toast';
 
 const ManagementGovernance: React.FC = () => {
   const { dao } = useOutletContext<{ dao: DAO }>();
   const { getAllProposals, createProposal, vote } = useProposals();
   const {
     getActiveProposals,
+    getGovernanceStats,
     loading: activeLoading,
     error: activeError,
   } = useGovernance();
   const [proposals, setProposals] = useState<any[]>([]);
   const [activeProposals, setActiveProposals] = useState<any[]>([]);
+  const [stats, setStats] = useState<any>(null);
+  const [toast, setToast] = useState<any>(null);
+  const [votingLoading, setVotingLoading] = useState<string | null>(null);
+  const [creatingProposal, setCreatingProposal] = useState(false);
 
   const loadProposals = async () => {
     try {
       const res = await getAllProposals();
       setProposals(res);
     } catch (err) {
-      // eslint-disable-next-line no-console
       console.error(err);
+      setToast({ type: 'error', message: 'Failed to load proposals' });
     }
   };
 
@@ -43,7 +51,16 @@ const ManagementGovernance: React.FC = () => {
       const res = await getActiveProposals();
       setActiveProposals(res);
     } catch (err) {
-      // eslint-disable-next-line no-console
+      console.error(err);
+      setToast({ type: 'error', message: 'Failed to load active proposals' });
+    }
+  };
+
+  const loadStats = async () => {
+    try {
+      const res = await getGovernanceStats();
+      setStats(res);
+    } catch (err) {
       console.error(err);
     }
   };
@@ -51,29 +68,42 @@ const ManagementGovernance: React.FC = () => {
   useEffect(() => {
     loadProposals();
     loadActiveProposals();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    loadStats();
   }, []);
 
   const handleCreateProposal = async () => {
+    setCreatingProposal(true);
     const title = prompt('Proposal title');
     if (!title) return;
     const description = prompt('Proposal description') || '';
     try {
       await createProposal(title, description);
+      setToast({ type: 'success', message: 'Proposal created successfully!' });
       await loadProposals();
+      await loadActiveProposals();
+      await loadStats();
     } catch (err) {
-      // eslint-disable-next-line no-console
       console.error(err);
+      setToast({ type: 'error', message: 'Failed to create proposal' });
+    } finally {
+      setCreatingProposal(false);
     }
   };
 
   const handleVote = async (id: bigint, choice: 'inFavor' | 'against' | 'abstain') => {
+    const proposalId = id.toString();
+    setVotingLoading(proposalId);
     try {
       await vote(id, choice);
+      setToast({ type: 'success', message: `Vote cast successfully!` });
       await loadProposals();
+      await loadActiveProposals();
+      await loadStats();
     } catch (err) {
-      // eslint-disable-next-line no-console
       console.error(err);
+      setToast({ type: 'error', message: 'Failed to cast vote' });
+    } finally {
+      setVotingLoading(null);
     }
   };
 
@@ -136,10 +166,20 @@ const ManagementGovernance: React.FC = () => {
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={handleCreateProposal}
+          disabled={creatingProposal}
           className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white rounded-lg transition-all font-semibold"
         >
-          <Plus className="w-4 h-4" />
-          <span>Create Proposal</span>
+          {creatingProposal ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>Creating...</span>
+            </>
+          ) : (
+            <>
+              <Plus className="w-4 h-4" />
+              <span>Create Proposal</span>
+            </>
+          )}
         </motion.button>
       </div>
 
@@ -154,7 +194,7 @@ const ManagementGovernance: React.FC = () => {
             <Vote className="w-5 h-5 text-blue-400" />
             <span className="text-sm text-gray-400 font-mono">TOTAL PROPOSALS</span>
           </div>
-          <p className="text-2xl font-bold text-white">{dao.governance.totalProposals}</p>
+          <p className="text-2xl font-bold text-white">{stats?.totalProposals?.toString() || dao.governance.totalProposals}</p>
         </motion.div>
 
         <motion.div
@@ -167,7 +207,7 @@ const ManagementGovernance: React.FC = () => {
             <Activity className="w-5 h-5 text-green-400" />
             <span className="text-sm text-gray-400 font-mono">ACTIVE</span>
           </div>
-          <p className="text-2xl font-bold text-white">{dao.governance.activeProposals}</p>
+          <p className="text-2xl font-bold text-white">{stats?.activeProposals?.toString() || activeProposals.length}</p>
         </motion.div>
 
         <motion.div
@@ -180,7 +220,7 @@ const ManagementGovernance: React.FC = () => {
             <Users className="w-5 h-5 text-purple-400" />
             <span className="text-sm text-gray-400 font-mono">PARTICIPATION</span>
           </div>
-          <p className="text-2xl font-bold text-white">78%</p>
+          <p className="text-2xl font-bold text-white">{stats?.totalVotes ? Math.round((Number(stats.totalVotes) / dao.memberCount) * 100) : 78}%</p>
         </motion.div>
 
         <motion.div
@@ -193,7 +233,7 @@ const ManagementGovernance: React.FC = () => {
             <TrendingUp className="w-5 h-5 text-orange-400" />
             <span className="text-sm text-gray-400 font-mono">SUCCESS RATE</span>
           </div>
-          <p className="text-2xl font-bold text-white">85%</p>
+          <p className="text-2xl font-bold text-white">{stats ? Math.round((Number(stats.succeededProposals) / Number(stats.totalProposals)) * 100) || 0 : 85}%</p>
         </motion.div>
       </div>
 
@@ -336,15 +376,45 @@ const ManagementGovernance: React.FC = () => {
                   <div className="flex space-x-2 pt-2">
                     <button
                       onClick={() => handleVote(proposal.id, 'inFavor')}
-                      className="px-3 py-1 text-xs rounded bg-green-600 text-white"
+                      disabled={votingLoading === proposal.id.toString()}
+                      className="px-3 py-1 text-xs rounded bg-green-600 hover:bg-green-700 text-white disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1"
                     >
-                      Vote For
+                      {votingLoading === proposal.id.toString() ? (
+                        <>
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                          <span>Voting...</span>
+                        </>
+                      ) : (
+                        <span>Vote For</span>
+                      )}
                     </button>
                     <button
                       onClick={() => handleVote(proposal.id, 'against')}
-                      className="px-3 py-1 text-xs rounded bg-red-600 text-white"
+                      disabled={votingLoading === proposal.id.toString()}
+                      className="px-3 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1"
                     >
-                      Vote Against
+                      {votingLoading === proposal.id.toString() ? (
+                        <>
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                          <span>Voting...</span>
+                        </>
+                      ) : (
+                        <span>Vote Against</span>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => handleVote(proposal.id, 'abstain')}
+                      disabled={votingLoading === proposal.id.toString()}
+                      className="px-3 py-1 text-xs rounded bg-gray-600 hover:bg-gray-700 text-white disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1"
+                    >
+                      {votingLoading === proposal.id.toString() ? (
+                        <>
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                          <span>Voting...</span>
+                        </>
+                      ) : (
+                        <span>Abstain</span>
+                      )}
                     </button>
                   </div>
                 </div>
@@ -353,6 +423,15 @@ const ManagementGovernance: React.FC = () => {
           })}
         </div>
       </motion.div>
+
+      {/* Toast Notifications */}
+      {toast && (
+        <Toast
+          type={toast.type}
+          message={toast.message}
+          onClose={() => setToast(null)}
+        />
+      )}
     </div>
   );
 };

@@ -81,6 +81,7 @@ export const useProposals = () => {
       if ('err' in res) throw new Error(res.err);
       return res.ok;
     } catch (err) {
+      console.error('Vote error:', err);
       setError(err.message);
       throw err;
     } finally {
@@ -88,12 +89,40 @@ export const useProposals = () => {
     }
   };
 
+  const getProposal = async (proposalId) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await actors.proposals.getProposal(BigInt(proposalId));
+      return res && res.length ? res[0] : null;
+    } catch (err) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getProposalStats = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      return await actors.proposals.getProposalStats();
+    } catch (err) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
   return {
     createProposal,
     vote,
     getAllProposals,
     getProposalsByCategory,
     getProposalTemplates,
+    getProposal,
+    getProposalStats,
     loading,
     error,
   };

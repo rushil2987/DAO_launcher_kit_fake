@@ -40,6 +40,7 @@ export interface DAOFormData {
   description: string;
   category: string;
   website: string;
+  cardImage: File | null;
   selectedModules: string[];
   selectedFeatures: Record<string, Record<string, boolean>>;
   tokenName: string;

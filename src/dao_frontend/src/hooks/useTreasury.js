@@ -116,8 +116,7 @@ export const useTreasury = () => {
     setError(null);
     try {
       const res = await actors.treasury.getBalance();
-      if ('err' in res) throw new Error(res.err);
-      return 'ok' in res ? res.ok : res;
+      return res;
     } catch (err) {
       setError(err.message);
       throw err;
@@ -130,6 +129,9 @@ export const useTreasury = () => {
     setLoading(true);
     setError(null);
     try {
+      if (!actors?.treasury) {
+        throw new Error('Treasury service not available');
+      }
       const txs = await actors.treasury.getAllTransactions();
       return txs;
     } catch (err) {
@@ -174,6 +176,9 @@ export const useTreasury = () => {
     setLoading(true);
     setError(null);
     try {
+      if (!actors?.treasury) {
+        throw new Error('Treasury service not available');
+      }
       const stats = await actors.treasury.getTreasuryStats();
       return stats;
     } catch (err) {
@@ -188,6 +193,9 @@ export const useTreasury = () => {
     setLoading(true);
     setError(null);
     try {
+      if (!actors?.treasury) {
+        throw new Error('Treasury service not available');
+      }
       const principal = Principal.fromText(principalId);
       const res = await actors.treasury.addAuthorizedPrincipal(principal);
       if ('err' in res) throw new Error(res.err);

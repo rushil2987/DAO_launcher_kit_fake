@@ -72,6 +72,9 @@ export const useGovernance = () => {
     setLoading(true);
     setError(null);
     try {
+      if (!actors?.governance) {
+        throw new Error('Governance service not available');
+      }
       const res = await actors.governance.getGovernanceStats();
       return res;
     } catch (err) {
@@ -101,6 +104,9 @@ export const useGovernance = () => {
     setLoading(true);
     setError(null);
     try {
+      if (!actors?.governance) {
+        throw new Error('Governance service not available');
+      }
       return await actors.governance.getActiveProposals();
     } catch (err) {
       setError(err.message);
@@ -114,6 +120,9 @@ export const useGovernance = () => {
     setLoading(true);
     setError(null);
     try {
+      if (!actors?.governance) {
+        throw new Error('Governance service not available');
+      }
       return await actors.governance.getAllProposals();
     } catch (err) {
       setError(err.message);

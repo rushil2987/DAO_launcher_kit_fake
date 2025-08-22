@@ -11,6 +11,10 @@ export const useAssets = () => {
     setLoading(true);
     setError(null);
     try {
+      if (!actors?.assets) {
+        throw new Error('Assets service not available');
+      }
+      
       const arrayBuffer = await file.arrayBuffer();
       const data = Array.from(new Uint8Array(arrayBuffer));
       const result = await actors.assets.uploadAsset(
@@ -20,11 +24,12 @@ export const useAssets = () => {
         isPublic,
         tags
       );
-      if (result.err) {
+      if ('err' in result) {
         throw new Error(result.err);
       }
       return result.ok;
     } catch (err) {
+      console.error('Upload error:', err);
       setError(err.message);
       throw err;
     } finally {
@@ -36,8 +41,12 @@ export const useAssets = () => {
     setLoading(true);
     setError(null);
     try {
+      if (!actors?.assets) {
+        throw new Error('Assets service not available');
+      }
+      
       const res = await actors.assets.getAsset(BigInt(assetId));
-      if (res.err) {
+      if ('err' in res) {
         throw new Error(res.err);
       }
       return res.ok;
@@ -66,6 +75,9 @@ export const useAssets = () => {
     setLoading(true);
     setError(null);
     try {
+      if (!actors?.assets) {
+        throw new Error('Assets service not available');
+      }
       return await actors.assets.getPublicAssets();
     } catch (err) {
       setError(err.message);
@@ -79,6 +91,9 @@ export const useAssets = () => {
     setLoading(true);
     setError(null);
     try {
+      if (!actors?.assets) {
+        throw new Error('Assets service not available');
+      }
       return await actors.assets.getUserAssets();
     } catch (err) {
       setError(err.message);
@@ -105,8 +120,12 @@ export const useAssets = () => {
     setLoading(true);
     setError(null);
     try {
+      if (!actors?.assets) {
+        throw new Error('Assets service not available');
+      }
+      
       const res = await actors.assets.deleteAsset(BigInt(assetId));
-      if (res.err) {
+      if ('err' in res) {
         throw new Error(res.err);
       }
       return res.ok;
@@ -144,6 +163,9 @@ export const useAssets = () => {
     setLoading(true);
     setError(null);
     try {
+      if (!actors?.assets) {
+        throw new Error('Assets service not available');
+      }
       return await actors.assets.getStorageStats();
     } catch (err) {
       setError(err.message);

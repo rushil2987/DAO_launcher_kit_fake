@@ -63,9 +63,10 @@ const ManagementStaking: React.FC = () => {
     if (!actors?.staking) return;
     try {
       const principalId = principal ? Principal.fromText(principal) : undefined;
-      const [stats, stakes] = await Promise.all([
+      const [stats, stakes, summary] = await Promise.all([
         actors.staking.getStakingStats(),
-        principalId ? actors.staking.getUserStakes(principalId) : Promise.resolve([])
+        principalId ? actors.staking.getUserStakes(principalId) : Promise.resolve([]),
+        principalId ? actors.staking.getUserStakingSummary(principalId) : Promise.resolve(null)
       ]);
 
       setUserStakes(stakes);
@@ -197,7 +198,7 @@ const ManagementStaking: React.FC = () => {
             <span className="text-sm text-gray-400 font-mono">YOUR STAKE</span>
           </div>
           <p className="text-2xl font-bold text-white">
-            {userStakes.reduce((acc, s) => acc + Number(s.amount), 0)}
+            {userStakes.reduce((acc, s) => acc + Number(s.amount), 0).toLocaleString()}
           </p>
           <p className="text-sm text-purple-400 mt-1">{userStakes.length} active stakes</p>
         </motion.div>

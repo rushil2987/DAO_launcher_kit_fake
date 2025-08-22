@@ -126,11 +126,24 @@ export const DAOManagementProvider: React.FC<DAOManagementProviderProps> = ({ ch
     setLoading(true);
     setError(null);
     try {
+      // Handle image upload if provided
+      let logoUrl = daoData.logo;
+      if (daoData.cardImage && typeof daoData.cardImage === 'object') {
+        // In a real implementation, you would upload the image to your asset storage
+        // For now, we'll create a data URL for preview
+        const reader = new FileReader();
+        logoUrl = await new Promise((resolve) => {
+          reader.onload = (e) => resolve(e.target?.result as string);
+          reader.readAsDataURL(daoData.cardImage as File);
+        });
+      }
+      
       const newDAO: DAO = {
         id: `dao-${Date.now()}`,
         name: daoData.name || 'New DAO',
         description: daoData.description || 'A new decentralized autonomous organization',
         tokenSymbol: daoData.tokenSymbol || 'NEW',
+        logo: logoUrl,
         memberCount: 1,
         totalValueLocked: '$0',
         createdAt: new Date(),

@@ -5,6 +5,7 @@ import { useOutletContext } from 'react-router-dom';
 import { useProposals } from '../../hooks/useProposals';
 import { useStaking } from '../../hooks/useStaking';
 import { useTreasury } from '../../hooks/useTreasury';
+import { useGovernance } from '../../hooks/useGovernance';
 import { useNavigate } from 'react-router-dom';
 import { 
   Users, 
@@ -19,38 +20,85 @@ import {
   ArrowDownRight,
   BarChart3,
   PieChart,
-  Target
+  Target,
+  RefreshCw,
+  Loader2
 } from 'lucide-react';
 import { DAO } from '../../types/dao';
 import { useActors } from '../../context/ActorContext';
+import { useAuth } from '../../context/AuthContext';
+import { Principal } from '@dfinity/principal';
 import type { Activity as ActivityRecord } from '@declarations/dao_backend/dao_backend.did';
 
 const Overview: React.FC = () => {
   const { dao } = useOutletContext<{ dao: DAO }>();
   const { daoBackend } = useActors();
+  const { principal } = useAuth();
   const { createProposal } = useProposals();
-  const { stake } = useStaking();
-  const { getBalance } = useTreasury();
+  const { stake, getUserStakingSummary, getStakingStats } = useStaking();
+  const { getBalance, getTreasuryStats } = useTreasury();
+  const { getGovernanceStats } = useGovernance();
   const navigate = useNavigate();
 
   const [recentActivity, setRecentActivity] = useState<ActivityRecord[]>([]);
+  const [dynamicStats, setDynamicStats] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
+  const fetchDynamicData = async () => {
+    try {
+      const [govStats, stakingStats, treasuryStats, userStaking] = await Promise.all([
+        getGovernanceStats(),
+        getStakingStats(),
+        getTreasuryStats(),
+        principal ? getUserStakingSummary(principal) : null
+      ]);
+
+      setDynamicStats({
+        governance: govStats,
+        staking: stakingStats,
+        treasury: treasuryStats,
+        userStaking
+      });
+    } catch (err) {
+      console.error('Failed to fetch dynamic stats', err);
+    }
+  };
   useEffect(() => {
-    const fetchRecentActivity = async () => {
+    const fetchData = async () => {
+      setLoading(true);
       try {
-        const activity = await daoBackend.getRecentActivity();
-        setRecentActivity(activity || []);
+        await Promise.all([
+          (async () => {
+            const activity = await daoBackend.getRecentActivity();
+            setRecentActivity(activity || []);
+          })(),
+          fetchDynamicData()
+        ]);
       } catch (err) {
-        console.error('Failed to fetch recent activity', err);
+        console.error('Failed to fetch data', err);
+      } finally {
+        setLoading(false);
       }
     };
 
     if (daoBackend) {
-      fetchRecentActivity();
+      fetchData();
     }
-  }, [daoBackend]);
+  }, [daoBackend, principal]);
 
-  const quickStats = [
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await fetchDynamicData();
+    } catch (err) {
+      console.error('Failed to refresh data', err);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  const quickStats = React.useMemo(() => [
     {
       label: 'Total Members',
       value: dao.memberCount.toLocaleString(),
@@ -61,15 +109,15 @@ const Overview: React.FC = () => {
     },
     {
       label: 'Treasury Balance',
-      value: dao.treasury.balance,
-      change: dao.treasury.monthlyInflow,
+      value: dynamicStats?.treasury ? `$${Number(dynamicStats.treasury.balance.total).toLocaleString()}` : dao.treasury.balance,
+      change: dynamicStats?.treasury ? `+$${Number(dynamicStats.treasury.totalDeposits).toLocaleString()}` : dao.treasury.monthlyInflow,
       trend: 'up',
       icon: DollarSign,
       color: 'green'
     },
     {
       label: 'Total Staked',
-      value: dao.staking.totalStaked,
+      value: dynamicStats?.staking ? `$${Number(dynamicStats.staking.totalStakedAmount).toLocaleString()}` : dao.staking.totalStaked,
       change: '+8.2%',
       trend: 'up',
       icon: Coins,
@@ -77,13 +125,13 @@ const Overview: React.FC = () => {
     },
     {
       label: 'Active Proposals',
-      value: dao.governance.activeProposals.toString(),
+      value: dynamicStats?.governance ? Number(dynamicStats.governance.activeProposals).toString() : dao.governance.activeProposals.toString(),
       change: '+2',
       trend: 'up',
       icon: Vote,
       color: 'orange'
     }
-  ];
+  ], [dao, dynamicStats]);
 
   const getColorClasses = (color: string) => {
     switch (color) {
@@ -133,15 +181,35 @@ const Overview: React.FC = () => {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div>
-        <h2 className="text-2xl font-bold text-white mb-2 font-mono">OVERVIEW</h2>
-        <p className="text-gray-400">
-          Complete overview of {dao.name} performance and activity
-        </p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-2xl font-bold text-white mb-2 font-mono">OVERVIEW</h2>
+          <p className="text-gray-400">
+            Complete overview of {dao.name} performance and activity
+          </p>
+        </div>
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={handleRefresh}
+          disabled={refreshing || loading}
+          className="flex items-center space-x-2 px-4 py-2 bg-gray-800 border border-gray-600 text-gray-300 hover:bg-gray-700 rounded-lg transition-all font-semibold disabled:opacity-50"
+        >
+          <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+          <span>Refresh</span>
+        </motion.button>
       </div>
 
+      {loading && (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
+          <span className="ml-2 text-blue-400 font-mono">Loading overview...</span>
+        </div>
+      )}
+
       {/* Quick Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {!loading && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {quickStats.map((stat, index) => (
           <motion.div
             key={stat.label}
@@ -170,7 +238,8 @@ const Overview: React.FC = () => {
             </div>
           </motion.div>
         ))}
-      </div>
+        </div>
+      )}
 
       {/* Main Content Grid */}
       <div className="grid lg:grid-cols-3 gap-8">
@@ -299,13 +368,21 @@ const Overview: React.FC = () => {
               <div>
                 <div className="flex justify-between text-sm mb-2">
                   <span className="text-gray-400 font-mono">Governance Participation</span>
-                  <span className="text-blue-400 font-bold">78%</span>
+                  <span className="text-blue-400 font-bold">
+                    {dynamicStats?.governance ? 
+                      Math.round((Number(dynamicStats.governance.totalVotes) / dao.memberCount) * 100) || 0 
+                      : 78}%
+                  </span>
                 </div>
                 <div className="w-full bg-gray-700 rounded-full h-2">
                   <motion.div 
                     className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full"
                     initial={{ width: 0 }}
-                    animate={{ width: '78%' }}
+                    animate={{ 
+                      width: `${dynamicStats?.governance ? 
+                        Math.round((Number(dynamicStats.governance.totalVotes) / dao.memberCount) * 100) || 0 
+                        : 78}%` 
+                    }}
                     transition={{ duration: 1, delay: 0.8 }}
                   />
                 </div>
@@ -314,13 +391,21 @@ const Overview: React.FC = () => {
               <div>
                 <div className="flex justify-between text-sm mb-2">
                   <span className="text-gray-400 font-mono">Treasury Utilization</span>
-                  <span className="text-green-400 font-bold">45%</span>
+                  <span className="text-green-400 font-bold">
+                    {dynamicStats?.treasury ? 
+                      Math.round((Number(dynamicStats.treasury.totalWithdrawals) / Number(dynamicStats.treasury.totalDeposits)) * 100) || 0 
+                      : 45}%
+                  </span>
                 </div>
                 <div className="w-full bg-gray-700 rounded-full h-2">
                   <motion.div 
                     className="bg-gradient-to-r from-green-500 to-emerald-500 h-2 rounded-full"
                     initial={{ width: 0 }}
-                    animate={{ width: '45%' }}
+                    animate={{ 
+                      width: `${dynamicStats?.treasury ? 
+                        Math.round((Number(dynamicStats.treasury.totalWithdrawals) / Number(dynamicStats.treasury.totalDeposits)) * 100) || 0 
+                        : 45}%` 
+                    }}
                     transition={{ duration: 1, delay: 1 }}
                   />
                 </div>

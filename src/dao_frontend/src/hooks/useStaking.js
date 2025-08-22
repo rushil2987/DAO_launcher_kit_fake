@@ -102,6 +102,9 @@ export const useStaking = () => {
     setLoading(true);
     setError(null);
     try {
+      if (!actors?.staking) {
+        throw new Error('Staking service not available');
+      }
       return await actors.staking.getStakingStats();
     } catch (err) {
       setError(err.message);
@@ -143,6 +146,9 @@ export const useStaking = () => {
     setLoading(true);
     setError(null);
     try {
+      if (!actors?.staking) {
+        throw new Error('Staking service not available');
+      }
       const principal = Principal.fromText(user);
       return await actors.staking.getUserStakingSummary(principal);
     } catch (err) {

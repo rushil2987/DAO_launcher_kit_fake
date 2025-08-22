@@ -30,7 +30,9 @@ import {
   Plus,
   Minus,
   Eye,
-  EyeOff
+  EyeOff,
+  Upload,
+  X
 } from 'lucide-react';
 
 const LaunchDAO = () => {
@@ -45,6 +47,7 @@ const LaunchDAO = () => {
   const [toast, setToast] = useState(null);
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [imagePreview, setImagePreview] = useState(null);
 
   const [formData, setFormData] = useState({
     // Step 1: Basic Info
@@ -52,6 +55,7 @@ const LaunchDAO = () => {
     description: '',
     category: '',
     website: '',
+    cardImage: null,
     
     // Step 2: Module Selection
     selectedModules: ['governance', 'treasury'], // Required modules
@@ -170,6 +174,19 @@ const LaunchDAO = () => {
     }
   };
 
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setFormData(prev => ({ ...prev, cardImage: file }));
+      
+      // Create preview
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setImagePreview(e.target.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
   const handleModuleToggle = (moduleId) => {
     const module = modules.find(m => m.id === moduleId);
     if (module?.required) return; // Can't toggle required modules
@@ -448,6 +465,57 @@ const LaunchDAO = () => {
                 placeholder="https://your-dao-website.com"
                 className="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-white font-mono"
               />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-300 mb-2 font-mono">DAO Card Image (Optional)</label>
+              <div className="space-y-4">
+                <div className="flex items-center space-x-4">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageChange}
+                    className="hidden"
+                    id="dao-image-upload"
+                  />
+                  <label
+                    htmlFor="dao-image-upload"
+                    className="flex items-center space-x-2 px-4 py-2 bg-gray-800 border border-gray-600 text-gray-300 hover:bg-gray-700 rounded-lg transition-colors cursor-pointer font-mono"
+                  >
+                    <Upload className="w-4 h-4" />
+                    <span>Choose Image</span>
+                  </label>
+                  {formData.cardImage && (
+                    <span className="text-green-400 text-sm font-mono">
+                      {formData.cardImage.name}
+                    </span>
+                  )}
+                </div>
+                
+                {imagePreview && (
+                  <div className="relative">
+                    <img
+                      src={imagePreview}
+                      alt="DAO Card Preview"
+                      className="w-full max-w-md h-48 object-cover rounded-lg border border-gray-600"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setImagePreview(null);
+                        setFormData(prev => ({ ...prev, cardImage: null }));
+                      }}
+                      className="absolute top-2 right-2 p-1 bg-red-500/80 text-white rounded-full hover:bg-red-600 transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+                
+                <p className="text-xs text-gray-500">
+                  Upload an image to represent your DAO. Recommended size: 400x300px
+                </p>
+              </div>
             </div>
           </div>
         );

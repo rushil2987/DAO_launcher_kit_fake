@@ -72,7 +72,7 @@ const DAOCard: React.FC<DAOCardProps> = ({ dao, index }) => {
           <img 
             src={dao.logo} 
             alt={dao.name}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           />
         ) : (
           <div className={`w-full h-full bg-gradient-to-br ${getCategoryColor(dao.category)} flex items-center justify-center`}>

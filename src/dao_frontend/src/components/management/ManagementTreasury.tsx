@@ -136,7 +136,7 @@ const ManagementTreasury: React.FC = () => {
   const treasuryStats = [
     {
       label: 'Total Balance',
-      value: balance ? balance.total.toString() : dao.treasury.balance,
+      value: balance ? `$${Number(balance.total).toLocaleString()}` : dao.treasury.balance,
       change: '+0%',
       trend: 'up',
       icon: Wallet,
@@ -144,7 +144,7 @@ const ManagementTreasury: React.FC = () => {
     },
     {
       label: 'Total Deposits',
-      value: stats ? stats.totalDeposits.toString() : dao.treasury.monthlyInflow,
+      value: stats ? `$${Number(stats.totalDeposits).toLocaleString()}` : dao.treasury.monthlyInflow,
       change: '+0%',
       trend: 'up',
       icon: TrendingUp,
@@ -152,7 +152,7 @@ const ManagementTreasury: React.FC = () => {
     },
     {
       label: 'Available Funds',
-      value: balance ? balance.available.toString() : '$0',
+      value: balance ? `$${Number(balance.available).toLocaleString()}` : '$0',
       change: '+0%',
       trend: 'down',
       icon: DollarSign,
@@ -160,7 +160,7 @@ const ManagementTreasury: React.FC = () => {
     },
     {
       label: 'Locked Funds',
-      value: balance ? balance.locked.toString() : '$0',
+      value: balance ? `$${Number(balance.locked).toLocaleString()}` : '$0',
       change: '+0%',
       trend: 'up',
       icon: Lock,
